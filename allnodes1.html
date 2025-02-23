@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Beehive Dashboard</title>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+  <link rel="stylesheet" href="allnodes/scripts/styles.css">
+
+  <!-- CSS for Proper Node Alignment (Side by Side Cards) -->
+  <style>
+    /* Container for dynamically added nodes */
+    #nodes-container {
+        display: flex;
+        flex-wrap: wrap; /* Allows wrapping if screen is too small */
+        justify-content: center; /* Centers items in the row */
+        gap: 20px; /* Space between nodecards */
+        padding: 20px;
+    }
+
+    /* Individual Node Card Styling */
+    .nodecard {
+        background-color: #f8f9fa;
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        padding: 15px;
+        text-align: center;
+        box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s ease-in-out;
+        width: 250px; /* Fixed width for all node cards */
+        min-width: 220px; /* Minimum width for responsiveness */
+    }
+
+    .nodecard:hover {
+        transform: scale(1.05); /* Slight zoom on hover */
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        #nodes-container {
+            justify-content: center; /* Keeps it centered on smaller screens */
+        }
+    }
+  </style>
+
+</head>
+<body>
+
+<header class="navbar">
+<div class="navbar-title">
+    <img src="images/beehive.png" alt="Beehive Logo">
+    <span>Smart Beehive Monitoring Dashboard</span>
+</div>
+<p class="time-text"><span id="time"></span><span class="time-sub-text" id="ampm"></span></p>
+<p class="day-text" id="day"></p>
+<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 16 16" stroke-width="0" fill="currentColor" stroke="currentColor" class="moondate"></path></svg>
+</div>
+</header>
+
+<!-- Navigation Bar -->
+<nav>
+    <div class="menu-btn">
+        <div class="line line--1"></div>
+        <div class="line line--2"></div>
+        <div class="line line--3"></div>
+    </div>
+
+    <div class="nav-links">
+      <a href="dashboard1.html" class="link">Home</a>
+      <a href="" class="link">Download our Webapp</a>
+      <a href="allnodes1.html" class="link">View AllNodes</a>
+      <a href="https://docs.google.com/spreadsheets/d/13267Z1p6zjq9Yur6jjxmnrLkjZOcrYgP9EeDw09aDO4/edit?usp=sharing" class="link" target="_blank">View History</a>
+      <a href="graphfor-1.html" class="link">View Activity Charts</a>
+      <a href="nodesaddandremove.html" class="link">Node Management</a>
+      <a href="contactus1.html" class="link">Contact Us</a>
+      <a href="#" onclick="logoutUser()" id="logoutLink">Logout</a>
+  </div>
+</nav>
+
+<!-- Container for dynamically generated node cards -->
+<div id="nodes-container"></div>
+
+<script>
+  // Firebase Configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyCc2CHbWxVlmLtGGF5L5tY_VxOnfuRo5FU",
+    authDomain: "test1-3e832.firebaseapp.com",
+    databaseURL: "https://test1-3e832-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "test1-3e832",
+    storageBucket: "test1-3e832.firebasestorage.app",
+    messagingSenderId: "518093938096",
+    appId: "1:518093938096:web:c29cb0c1981327777e4a75",
+    measurementId: "G-C0X95TBMCL"
+  };
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
+
+// Logout function
+function logoutUser() {
+  firebase.auth().signOut()
+    .then(() => {
+      window.location.href = "index.html";
+    })
+    .catch((error) => {
+      alert(error.message);
+      console.error('Logout error:', error);
+    });
+}
+
+// Function to dynamically update nodes based on Firebase data
+function updateNodes() {
+  const nodesContainer = document.getElementById("nodes-container");
+  nodesContainer.innerHTML = ""; // Clear previous nodes
+
+  const nodesRef = database.ref(`/2490315/`);
+  nodesRef.on("value", (snapshot) => {
+    const nodesData = snapshot.val();
+    if (nodesData) {
+      Object.keys(nodesData).forEach((nodeKey, index) => {
+        const nodeData = nodesData[nodeKey];
+        const beehiveName = `Beehive-${index + 1}`; // Convert node names
+
+        // Create a new nodecard element dynamically
+        const nodeCard = document.createElement("div");
+        nodeCard.classList.add("nodecard", `nodecard-${nodeKey}`);
+
+        nodeCard.innerHTML = `
+          <h3>${beehiveName}</h3>
+          <p>Temperature: <span id="temp-${nodeKey}">${nodeData.temperature ? nodeData.temperature.toFixed(2) : "Loading..."}</span> °C</p>
+          <p>Battery: <span id="battery-${nodeKey}">${nodeData.battery ? nodeData.battery.toFixed(2) : "Loading..."}</span> %</p>
+          <p>Weight: <span id="weight-${nodeKey}">${nodeData.weight ? nodeData.weight.toFixed(2) : "Loading..."}</span> kg</p>
+          <p>Hornet Detection: <span id="hornet-${nodeKey}" class="${nodeData.hornetDetected ? "hornet-detected" : "hornet-safe"}">
+            ${nodeData.hornetDetected ? "Detected" : "Not Detected"}
+          </span></p>
+        `;
+
+        nodesContainer.appendChild(nodeCard);
+
+        // Realtime updates for this node
+        database.ref(`/2490315/${nodeKey}`).on("value", (nodeSnapshot) => {
+          const updatedData = nodeSnapshot.val();
+          if (updatedData) {
+            document.getElementById(`temp-${nodeKey}`).innerText = updatedData.temperature.toFixed(2);
+            document.getElementById(`battery-${nodeKey}`).innerText = updatedData.battery.toFixed(2);
+            document.getElementById(`weight-${nodeKey}`).innerText = updatedData.weight.toFixed(2);
+            const hornetElement = document.getElementById(`hornet-${nodeKey}`);
+            hornetElement.innerText = updatedData.hornetDetected ? "Detected" : "Not Detected";
+            hornetElement.className = updatedData.hornetDetected ? "hornet-detected" : "hornet-safe";
+          }
+        });
+      });
+    }
+  });
+}
+
+// Call function to initialize node updates
+updateNodes();
+
+
+</script>
+
+<!-- Custom Scripts -->
+<script src="allnodes/scripts/firebase-config1.js"></script>
+<script src="allnodes/scripts/datetime.js"></script>
+<script src="allnodes/scripts/Menu.js"></script>
+<script src="allnodes/scripts/node-config.js"></script>
+</body>
+</html>

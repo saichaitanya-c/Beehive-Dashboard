@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<link rel="stylesheet" href="graphs/styles/graphsstyles.css">
+<html lang="en">
+<head>
+    <nav>
+        <div class="menu-btn">
+            <div class="line line--1"></div>
+            <div class="line line--2"></div>
+            <div class="line line--3"></div>
+        </div>
+    
+        <div class="nav-links">
+            <a href="dashboard1.html" class="link">Home</a>
+            <a href="" class="link">Download our Webapp</a>
+            <a href="allnodes1.html" class="link">View AllNodes</a>
+            <a href="https://docs.google.com/spreadsheets/d/13267Z1p6zjq9Yur6jjxmnrLkjZOcrYgP9EeDw09aDO4/edit?usp=sharing" class="link" target="_blank">View History</a>
+            <a href="graphfor-1.html" class="link">View Activity Charts</a>
+            <a href="" class="link">Node Management</a>
+            <a href="contactus1.html" class="link">Contact Us</a>
+            <a href="#" onclick="logoutUser()" id="logoutLink">Logout</a>
+        </div>
+    </nav>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beehives Monitoring Dashboard</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 0;
+        }
+        .chart-container {
+            max-width: 1600px;
+            margin: 20px auto;
+        }
+        h1, h2 {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>Beehives Monitoring Dashboard</h1>
+
+    <div id="chartSection"></div> <!-- Dynamic chart section -->
+
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCc2CHbWxVlmLtGGF5L5tY_VxOnfuRo5FU",
+            authDomain: "test1-3e832.firebaseapp.com",
+            databaseURL: "https://test1-3e832-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "test1-3e832",
+            storageBucket: "test1-3e832.firebasestorage.app",
+            messagingSenderId: "518093938096",
+            appId: "1:518093938096:web:c29cb0c1981327777e4a75",
+            measurementId: "G-C0X95TBMCL"
+        };
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// Load Google Charts
+google.charts.load('current', { packages: ['corechart'] });
+google.charts.setOnLoadCallback(fetchNodesAndDrawCharts);
+
+// Max data points for display
+const maxDataPoints = 10;
+const chartDataMap = {}; // Stores chart data for each node
+const charts = {}; // Stores Google Chart instances
+
+// Function to fetch node list and generate graphs dynamically
+function fetchNodesAndDrawCharts() {
+    db.ref('2490315').once('value', snapshot => {
+        const nodes = snapshot.val();
+        if (!nodes) return;
+
+        const chartSection = document.getElementById("chartSection");
+        chartSection.innerHTML = ""; // Clear existing charts
+
+        Object.keys(nodes).forEach((nodeId, index) => {
+            // Create chart container dynamically
+            const beehiveNumber = index + 1;
+            const nodeTitle = document.createElement("h2");
+            nodeTitle.textContent = `Beehive ${beehiveNumber}`;
+            
+            const chartDiv = document.createElement("div");
+            chartDiv.id = `chart_${nodeId}`;
+            chartDiv.className = "chart-container";
+            
+            chartSection.appendChild(nodeTitle);
+            chartSection.appendChild(chartDiv);
+
+            // Initialize chart data structure
+            chartDataMap[nodeId] = [['Time', 'Temperature (°C)', 'Weight (kg)']];
+            
+            // Fetch and update data
+            updateNodeData(nodeId);
+        });
+    });
+}
+
+// Function to draw chart for a specific node
+function drawChart(nodeId) {
+    const data = google.visualization.arrayToDataTable(chartDataMap[nodeId]);
+    const options = {
+        title: `Beehive Monitoring Data`,
+        curveType: 'function',
+        legend: { position: 'bottom' },
+        width: 1600, 
+        height: 500,
+        hAxis: { title: 'Time' },
+        vAxis: { title: 'Values' }
+    };
+
+    if (!charts[nodeId]) {
+        charts[nodeId] = new google.visualization.LineChart(document.getElementById(`chart_${nodeId}`));
+    }
+    charts[nodeId].draw(data, options);
+}
+
+// Function to fetch and update data for each node dynamically
+function updateNodeData(nodeId) {
+    db.ref(`2490315/${nodeId}`).on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (!data) return;
+
+        const currentTime = new Date().toLocaleTimeString(); // Get current time
+        
+        // Add new data to the chart (excluding battery)
+        chartDataMap[nodeId].push([currentTime, data.temperature, data.weight]);
+
+        // Keep only the last 10 data points
+        if (chartDataMap[nodeId].length > maxDataPoints + 1) {
+            chartDataMap[nodeId].splice(1, 1);
+        }
+
+        // Draw chart with updated data
+        drawChart(nodeId);
+    });
+}
+
+// Menu behavior
+var menuBtn = document.querySelector('.menu-btn');
+var nav = document.querySelector('nav');
+var lineOne = document.querySelector('nav .menu-btn .line--1');
+var lineTwo = document.querySelector('nav .menu-btn .line--2');
+var lineThree = document.querySelector('nav .menu-btn .line--3');
+var link = document.querySelector('nav .nav-links');
+
+menuBtn.addEventListener('click', () => {
+    nav.classList.toggle('nav-open');
+    lineOne.classList.toggle('line-cross');
+    lineTwo.classList.toggle('line-fade-out');
+    lineThree.classList.toggle('line-cross');
+    link.classList.toggle('fade-in');
+});
+
+// Night mode toggle
+document.addEventListener('DOMContentLoaded', function () {
+    const switchInput = document.querySelector('.switch .input');
+
+    function toggleNightMode() {
+        document.body.classList.toggle('night-mode');
+    }
+
+    switchInput.addEventListener('change', toggleNightMode);
+});
+
+
+    </script>
+</body>
+</html>
